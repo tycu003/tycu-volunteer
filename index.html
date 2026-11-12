@@ -575,12 +575,12 @@
 <div class="wrap">
   <header>
     <h1><span class="nw">桃園社大</span> <span class="nw">志工報名</span></h1>
-    <p class="sub" id="sub">想幫忙哪一場，按「我要報名」，填名字就好 <span class="heart">♥︎</span></p>
+    <p class="sub" id="sub">想幫忙哪一場，按「我要報名」，填中文全名就好 <span class="heart">♥︎</span></p>
     <div id="demo"></div>
     <div class="tabs" id="tabs" hidden></div>
     <div class="search" id="searchBox" hidden>
       <span class="sicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
-      <input id="q" type="search" enterkeyhint="search" placeholder="打名字、活動或地點" oninput="onSearch(this.value)">
+      <input id="q" type="search" enterkeyhint="search" placeholder="打中文全名、活動或地點" oninput="onSearch(this.value)">
       <button id="qClear" onclick="clearSearch()" hidden>清除</button>
     </div>
     <div class="qhint" id="qHint" hidden></div>
@@ -714,7 +714,7 @@ function renderList(past) {
   if (q) {   // 有搜尋時：跨月份全部找，不分頁
     var hits = list.filter(function (e) { return matchEvent(e, q) && (past || !STATE.multi || canPick(e)); });
     html += '<p class="result">找到 ' + hits.length + ' 場' +
-      (!hits.length ? '<small>換個關鍵字試試，例如只打名字的其中一個字</small>' :
+      (!hits.length ? '<small>換個關鍵字試試，例如只打中文全名的其中一個字</small>' :
         hits.some(function (e) { return (e.names || []).concat(e.staff || []).some(isHit); }) ? '<small>符合的名字會用橘色框標出來</small>' : '') + '</p>';
     html += rowsHTML(hits, me);
     document.getElementById('main').innerHTML = html;
@@ -764,7 +764,7 @@ function drawHint(show) {
   h.hidden = false;
   h.innerHTML = n
     ? '<span>' + esc(me) + '，你有 ' + n + ' 場</span><button onclick="searchMe()">看我的報名 ›</button>'
-    : '<span>打自己的名字，可以查你報了哪幾場；打活動名稱或地點，可以找場次。</span>';
+    : '<span>打自己的中文全名，可以查你報了哪幾場；打活動名稱或地點，可以找場次。</span>';
 }
 function searchMe() { var i = document.getElementById('q'); i.value = myName(); onSearch(i.value); window.scrollTo(0, 0); }
 
@@ -785,8 +785,8 @@ var ICON = {
 /* ---------- 我要報名（可一次選很多場） ---------- */
 function multiHTML() {
   if (!STATE.multi) return '';
-  if ((STATE.data && STATE.data.isAdmin)) return '<div class="multi-tip">幫志工報名：先勾場次（一場或很多場都可以，截止、額滿的也可以），再按最下方的按鈕填名字（一位或很多位都可以）。</div>';
-  return '<div class="multi-tip">這裡只會列出<b>還能報名</b>的場次。<br>請按每一場右上角的「☐ 選」，想參加幾場就選幾場，下個月的也可以一起選。<br>選好後按最下方的粉紅色按鈕填名字。</div>';
+  if ((STATE.data && STATE.data.isAdmin)) return '<div class="multi-tip">幫志工報名：先勾場次（一場或很多場都可以，截止、額滿的也可以），再按最下方的按鈕填中文全名（一位或很多位都可以）。</div>';
+  return '<div class="multi-tip">這裡只會列出<b>還能報名</b>的場次。<br>請按每一場右上角的「☐ 選」，想參加幾場就選幾場，下個月的也可以一起選。<br>選好後按最下方的粉紅色按鈕填中文全名。</div>';
 }
 
 /* ---------- 月曆 ---------- */
@@ -858,7 +858,7 @@ function drawBar() {
   bar.hidden = false;
   bar.innerHTML = '<div class="in"><button class="btn btn-back" onclick="stopMulti()" style="width:auto;margin:0">離開</button>' +
     '<button class="btn btn-go go wrap"' + (n ? '' : ' disabled style="opacity:.45"') + ' onclick="openMultiSubmit()">' +
-    (n ? '已選 ' + n + ' 場，' + ((STATE.data && STATE.data.isAdmin) ? '填志工名字' : '填名字報名') : '還沒選任何一場') + '</button></div>';
+    (n ? '已選 ' + n + ' 場，' + ((STATE.data && STATE.data.isAdmin) ? '填志工中文全名' : '填中文全名報名') : '還沒選任何一場') + '</button></div>';
 }
 function openMultiSubmit() {
   var evs = pickedEvents();
@@ -868,10 +868,10 @@ function openMultiSubmit() {
   var adm = (STATE.data && STATE.data.isAdmin);
   openSheet('<h2>' + (adm ? '幫志工報名 ' + evs.length + ' 場' : '一次報名 ' + evs.length + ' 場') + '</h2>' +
     '<ul class="res">' + evs.map(function (e) { return '<li><b>' + dayLabel(e.date) + gatherTxt(e) + '</b>' + esc(e.title) + (mealTag(e) ? '<span class="lunchtag">' + mealTag(e) + '</span>' : '') + '</li>'; }).join('') + '</ul>' +
-    (adm ? '<label for="nm">志工的名字 <span class="hint">（可以一次填好幾位，用空白或頓號隔開）</span></label><textarea id="nm" rows="2" style="height:76px;min-height:0" placeholder="例如：桃桃、園園" oninput="amPreview()"></textarea><div id="amPv" class="aspv"></div>'
-      : '<label for="nm">你的名字 <span class="hint">（請寫全名）</span></label><input id="nm" autocomplete="name" maxlength="12" placeholder="例如：林桃桃" value="' + esc(myName()) + '">') +
+    (adm ? '<label for="nm">志工的中文全名 <span class="hint">（可以一次填好幾位，用空白或頓號隔開）</span></label><textarea id="nm" rows="2" style="height:76px;min-height:0" placeholder="例如：林桃桃、園園" oninput="amPreview()"></textarea><div id="amPv" class="aspv"></div>'
+      : '<label for="nm">你的中文全名 <span class="hint">（例如：林桃桃）</span></label><input id="nm" autocomplete="name" maxlength="12" placeholder="例如：林桃桃" value="' + esc(myName()) + '">') +
     (mealEvs.length ? '<label style="margin-top:18px;display:block">餐點要葷的還是素的？' + (adm ? '<span class="hint">（不知道可以先不選，之後點名字改）</span>' : '') + (mealEvs.length > 1 ? '<span class="hint">（每一場可以選不一樣）</span>' : '') + '</label>' +
-      (adm ? '<div id="amMeal"><p class="admin-note">先在上面填名字，這裡就會出現每個人的葷素可以選。</p></div>' :
+      (adm ? '<div id="amMeal"><p class="admin-note">先在上面填中文全名，這裡就會出現每個人的葷素可以選。</p></div>' :
       mealEvs.map(function (e) {
         return '<div class="mealev" id="me-' + esc(e.id) + '">' + (mealEvs.length > 1 || evs.length > 1 ? '<div class="me-h">' + dayLabel(e.date) + '　' + esc(e.title) + '</div>' : '') +
           (e.breakfast ? '<div class="me-k">早餐</div>' + mealPickHTML(e.id, 'bf') : '') +
@@ -889,14 +889,14 @@ function amPreview() {
   box.innerHTML = n.length ? '<p class="admin-note" style="margin:4px 0">每個人可以選不一樣，不知道的先空著，之後點名字再改。</p>' + evs.map(function (e) {
     return '<div class="mealev">' + (evs.length > 1 ? '<div class="me-h">' + dayLabel(e.date) + '　' + esc(e.title) + '</div>' : '') +
       mgBox('am-' + e.id, n, [e.breakfast ? 'bf' : '', e.lunch ? 'lunch' : ''].filter(Boolean)) + '</div>';
-  }).join('') : '<p class="admin-note">先在上面填名字，這裡就會出現每個人的葷素可以選。</p>';
+  }).join('') : '<p class="admin-note">先在上面填中文全名，這裡就會出現每個人的葷素可以選。</p>';
 }
 function doMulti() {
   if (STATE.busy) return;
   var adm0 = (STATE.data && STATE.data.isAdmin), raw = document.getElementById('nm').value;
   var name = adm0 ? splitNamesInput(raw) : clean(raw);
-  if (!name || !name.length) { document.getElementById('err').textContent = '請先填名字'; return; }
-  if (adm0) { var badN = name.filter(function (n) { return !NAME_RE.test(n); }); if (badN.length) { document.getElementById('err').textContent = '名字只能用文字（不要放符號）：' + badN.join('、'); return; } }
+  if (!name || !name.length) { document.getElementById('err').textContent = '請先填中文全名'; return; }
+  if (adm0) { var badN = name.filter(function (n) { return !NAME_RE.test(n); }); if (badN.length) { document.getElementById('err').textContent = '中文全名只能用文字（不要放符號）：' + badN.join('、'); return; } }
   var sel = STATE.mealSel || {}, miss = null;
   pickedEvents().forEach(function (e) {
     var m = sel[e.id] || {};
@@ -1042,8 +1042,8 @@ function openCancelByEvent() {
 }
 function openMyCancel(prefill) {
   var adm = (STATE.data && STATE.data.isAdmin);
-  openSheet('<h2>' + (adm ? '幫志工取消' : '我要取消') + '</h2>' + (adm ? cxModeBar('name') : '') + '<p class="ctx">' + (adm ? '打志工的名字（打其中一個字也可以），會列出他報名的所有場次，可以一次勾很多場取消。' : '輸入名字，打其中一個字也可以，就會列出報名的場次。') + '</p>' +
-    '<label for="cn">' + (adm ? '志工的名字' : '你的名字') + '</label><input id="cn" autocomplete="' + (adm ? 'off' : 'name') + '" maxlength="12" placeholder="例如：桃桃" value="' + esc(prefill || (adm ? '' : myName())) + '">' +
+  openSheet('<h2>' + (adm ? '幫志工取消' : '我要取消') + '</h2>' + (adm ? cxModeBar('name') : '') + '<p class="ctx">' + (adm ? '打志工的中文全名（打其中一個字也可以），會列出他報名的所有場次，可以一次勾很多場取消。' : '輸入你的中文全名，打其中一個字也可以，就會列出報名的場次。') + '</p>' +
+    '<label for="cn">' + (adm ? '志工的中文全名' : '你的中文全名') + '</label><input id="cn" autocomplete="' + (adm ? 'off' : 'name') + '" maxlength="12" placeholder="例如：林桃桃" value="' + esc(prefill || (adm ? '' : myName())) + '">' +
     '<p class="err" id="err"></p>' +
     '<button class="btn btn-go" id="ok" onclick="showMySignups()">' + (adm ? '查詢' : '查詢我的報名') + '</button>' +
     '<button class="btn btn-back" onclick="closeSheet()">返回</button>');
@@ -1053,7 +1053,7 @@ function openMyCancel(prefill) {
 }
 function showMySignups(q) {
   q = clean(q != null ? q : document.getElementById('cn').value);
-  if (!q) { document.getElementById('err').textContent = '請先填名字'; return; }
+  if (!q) { document.getElementById('err').textContent = '請先填中文全名'; return; }
   // 跟搜尋一樣：名字裡有這個字就列出來（打「桃」會找到「桃桃」「林桃桃」）
   var found = [], ql = q.toLowerCase(), adm = (STATE.data && STATE.data.isAdmin);
   STATE.data.events.forEach(function (e) {
@@ -1066,8 +1066,8 @@ function showMySignups(q) {
     (found.length ? '<p class="ctx">勾選要取消的場次（可以勾很多場），請看清楚「登記的名字」' + ((STATE.data && STATE.data.isAdmin) ? '是不是這位志工' : '是不是你') + '。</p>' + cxListHTML(found, (STATE.data && STATE.data.isAdmin)) +
       '<p class="err" id="err"></p>' +
       '<button class="btn btn-danger" id="okCx" onclick="reviewCancel(' + ((STATE.data && STATE.data.isAdmin) ? 'true' : 'false') + ')" disabled style="opacity:.45">請先勾選要取消的場次</button>'
-    : '<p class="ctx">找不到' + (adm ? '符合「' + esc(q) + '」的報名' : '「' + esc(q) + '」報名的場次') + '。<br>請確認名字跟報名時一樣，或聯絡工作人員。</p>') +
-    '<button class="btn btn-back" onclick="openMyCancel(' + jsArg(q) + ')">' + (adm ? '換一個關鍵字' : '換一個名字') + '</button>' +
+    : '<p class="ctx">找不到' + (adm ? '符合「' + esc(q) + '」的報名' : '「' + esc(q) + '」報名的場次') + '。<br>請確認中文全名跟報名時一樣，或聯絡工作人員。</p>') +
+    '<button class="btn btn-back" onclick="openMyCancel(' + jsArg(q) + ')">' + (adm ? '換一個關鍵字' : '換一個中文全名') + '</button>' +
     '<button class="btn btn-back" onclick="closeSheet()">關閉</button>');
 }
 /* 可勾選的取消清單。admin=true 時，今天或已截止的也能勾 */
@@ -1127,8 +1127,8 @@ function openAdminSignup(id) {
   var e = findEvent(id);
   STATE.asEvent = id; STATE.mealSel = {}; STATE.mealSel[id] = { lunch: '', bf: '' };
   openSheet('<h2>幫志工報名</h2><p class="ctx">' + ctxLine(e) + '</p>' +
-    '<label for="asIn">志工名字 <span style="font-weight:400;color:var(--muted);font-size:15px">（一次打很多個，用頓號或空格隔開）</span></label>' +
-    '<textarea id="asIn" rows="3" placeholder="例如：桃桃、園園 主秘" oninput="asPreview()" style="min-height:96px;font-size:20px;margin-top:0"></textarea>' +
+    '<label for="asIn">志工中文全名 <span style="font-weight:400;color:var(--muted);font-size:15px">（一次打很多個，用頓號或空格隔開）</span></label>' +
+    '<textarea id="asIn" rows="3" placeholder="例如：林桃桃、園園 主秘" oninput="asPreview()" style="min-height:96px;font-size:20px;margin-top:0"></textarea>' +
     '<div id="asPv" class="aspv"></div>' +
     (e.breakfast ? '<label style="margin-top:12px;display:block">早餐 <span class="hint">（這次輸入的人都套用同一個）</span></label>' + mealPickHTML(id, 'bf') : '') +
     (e.lunch ? '<label style="margin-top:12px;display:block">便當 <span class="hint">（這次輸入的人都套用同一個）</span></label>' + mealPickHTML(id, 'lunch') : '') +
@@ -1150,7 +1150,7 @@ function asPreview() {
     (over ? '<p class="nowst" style="color:var(--orange)">⚠️ 加完會有 ' + (e.names.length + good.length) + ' 位，超過需要的 ' + e.need + ' 位。後台還是可以加，要的話請記得調整人數。</p>' : '') : '';
   var b = document.getElementById('okAs');
   b.disabled = !good.length; b.style.opacity = good.length ? '' : '.45';
-  b.textContent = good.length ? '幫這 ' + good.length + ' 位報名' : '請先輸入名字';
+  b.textContent = good.length ? '幫這 ' + good.length + ' 位報名' : '請先輸入中文全名';
   STATE.asNames = good;
 }
 function doAdminSignup() {
@@ -1365,7 +1365,7 @@ function openSignup(id) {
   var already = me && e.names.indexOf(me) >= 0;
   openSheet(
     '<h2>我要報名</h2><p class="ctx">' + ctxLine(e) + '</p>' +
-    '<label for="nm">你的名字 <span class="hint">（請寫全名）</span></label>' +
+    '<label for="nm">你的中文全名 <span class="hint">（例如：林桃桃）</span></label>' +
     '<input id="nm" autocomplete="name" maxlength="12" placeholder="例如：林桃桃" value="' + (already ? '' : esc(me)) + '">' +
     '<p class="err" id="err"></p>' +
     '<button class="btn btn-go" id="ok" onclick="doSignup(' + jsArg(id) + ')">送出報名</button>' +
@@ -1379,7 +1379,7 @@ function openSignup(id) {
 function doSignup(id) {
   if (STATE.busy) return;
   var name = clean(document.getElementById('nm').value);
-  if (!name) { document.getElementById('err').textContent = '請先填名字'; return; }
+  if (!name) { document.getElementById('err').textContent = '請先填中文全名'; return; }
   busy(true, '送出中…');
   call('signup', id, name).then(function (d) {
     if (!myName()) saveName(name);
@@ -1470,7 +1470,7 @@ function toast(msg) { var t = document.getElementById('toast'); t.textContent = 
    ========================================================= */
 function renderTabs() {
   var t = document.getElementById('tabs');
-  if (!STATE.data.isAdmin) { t.hidden = true; document.getElementById('sub').innerHTML = '想幫忙哪一場，按「我要報名」，填名字就好 <span class="heart">♥︎</span>'; return; }
+  if (!STATE.data.isAdmin) { t.hidden = true; document.getElementById('sub').innerHTML = '想幫忙哪一場，按「我要報名」，填中文全名就好 <span class="heart">♥︎</span>'; return; }
   t.hidden = false;
   document.getElementById('sub').textContent = '工作人員後台｜志工看到的是一般網址';
   t.innerHTML = [['list', '活動與名單'], ['add', '＋新增場次'], ['remind', '提醒訊息'], ['recruit', '徵求志工訊息'], ['log', '報名／取消紀錄'], ['plan', '工作分配表'], ['hours', '服務時數統計'], ['past', '過去的活動']].map(function (x) {
@@ -2656,7 +2656,7 @@ function drawRecruit() {
     ];
     t += '\n▌' + e.title + '\n\n' + lines.filter(Boolean).join('\n　\n') + '\n';
   });
-  t += '\n報名方式：點下面的網址，按「我要報名」，勾選場次、填名字就好' + (STATE.data.appUrl ? '\n' + STATE.data.appUrl : '\n（請貼上報名網址）') + '\n\n謝謝各位夥伴 ❤️';
+  t += '\n報名方式：點下面的網址，按「我要報名」，勾選場次、填中文全名就好' + (STATE.data.appUrl ? '\n' + STATE.data.appUrl : '\n（請貼上報名網址）') + '\n\n謝謝各位夥伴 ❤️';
   var ta = document.getElementById('recText'); if (ta) ta.value = t;
 }
 function copyText(id) {
@@ -2769,7 +2769,7 @@ var Mock = (function () {
     return res;
   }
   function change(action, id, name) {
-    name = clean(name); if (!name) throw new Error('請輸入名字');
+    name = clean(name); if (!name) throw new Error('請輸入中文全名');
     var l = rosters()[id] || [];
     if (action === '報名' && l.indexOf(name) >= 0) throw new Error(name + ' 已經報名過這場了');
     if (action === '取消' && l.indexOf(name) < 0) throw new Error('名單上沒有「' + name + '」');
@@ -2788,7 +2788,7 @@ var Mock = (function () {
   }
   function login(pw) { if (pw !== 'demo') throw new Error('密碼不正確（示範模式密碼是 demo）'); var d = getData('demo-token'); d.token = 'demo-token'; return d; }
   function signupMany(ids, name, sel) {
-    name = clean(name); if (!name) throw new Error('請輸入名字');
+    name = clean(name); if (!name) throw new Error('請輸入中文全名');
     var res = ids.map(function (id) { var e = events.filter(function (x) { return x.id === id; })[0];
       var l = rosters()[id] || [];
       if (l.indexOf(name) >= 0) return { ok: false, date: e.date, title: e.title, msg: '之前已經報名過了' };
