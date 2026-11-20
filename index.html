@@ -482,7 +482,21 @@
   .vpick button{min-height:58px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;text-align:left;padding:6px 10px;cursor:pointer}
   .vpick button b{display:block;font-size:18px}
   .vpick button small{font-size:13px;color:var(--muted)}
-  .vpick button.on{border-color:#5b2d91;background:#efe6f7}
+  .vpick button.todo{border-color:var(--orange);background:var(--orange-soft)}
+  .vpick button.todo small{color:var(--orange);font-weight:700}
+  .vpick button.done{background:var(--staff-bg);border-color:var(--staff-line)}
+  .vpick button.done b{color:var(--muted);font-weight:500}
+  .vpick button.on{border-color:#5b2d91;background:#efe6f7;border-width:3px}
+  .vpick button.on small{color:#5b2d91;font-weight:700}
+  .vpick button small{font-size:15px}
+  .vpg{font-weight:700;font-size:17px;margin:14px 0 6px;padding-left:10px;border-left:5px solid}
+  .vpg.g-todo{color:var(--orange);border-color:var(--orange)}
+  .vpg.g-done{color:var(--muted);border-color:var(--staff-line)}
+  .vp-sum{margin:4px 0 0;font-size:17px}
+  .vp-sum b{color:var(--orange);font-size:20px}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .vpick button.on{background:#3a2a4d;border-color:#b79be0} :root:not([data-theme="light"]) .vpick button.on small{color:#cdb6f0} }
+  :root[data-theme="dark"] .vpick button.on{background:#3a2a4d;border-color:#b79be0}
+  :root[data-theme="dark"] .vpick button.on small{color:#cdb6f0}
   html.big .vpick{grid-template-columns:minmax(0,1fr)}
   .tplrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
   .tplrow button{border:1.5px solid;background:transparent;border-radius:999px;padding:4px 12px;font:inherit}
@@ -660,6 +674,7 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function
 function load(silent) {
   if (!silent) document.getElementById('updated').textContent = '讀取中…';
   return call('getData', STATE.adminKey).then(function (d) {
+    if (STATE.mealPending && silent) return;   // 餐點還在背景存，先不要用舊資料蓋掉
     STATE.data = d;
     // 自動更新（切回分頁、每 30 秒）時，正在填表單、排工作、查詢的畫面不重畫，免得打到一半被清空
     if (silent && !safeToRender()) { document.getElementById('updated').textContent = '最後更新 ' + d.updatedAt; return; }
@@ -964,12 +979,19 @@ function openSetMeal(id, name) {
     '<button class="btn btn-go" id="ok" onclick="doSetMeal()">儲存</button><button class="btn btn-back" onclick="closeSheet()">取消</button>');
 }
 function doSetMeal() {
-  if (STATE.busy) return;
-  var m = STATE.mealSel[STATE.smId] || {};
-  busy(true, '儲存中…');
-  call('setMeal', STATE.adminKey, STATE.smId, STATE.smName, m.lunch || '', m.bf || '').then(function (d) {
-    STATE.data = d; closeSheet(); render(); toast('已改好「' + STATE.smName + '」的餐點');
-  }).catch(function (e) { document.getElementById('err').textContent = e.message; }).then(function () { busy(false, '儲存'); });
+  /* 加速：畫面先改好、馬上關掉，後面再慢慢存到試算表；存失敗才跳提醒並重新整理 */
+  var id = STATE.smId, name = STATE.smName, m = STATE.mealSel[id] || {}, e = findEvent(id);
+  if (e) {
+    if (e.lunch) { e.meals = e.meals || {}; e.meals[name] = m.lunch || ''; }
+    if (e.breakfast) { e.bfs = e.bfs || {}; e.bfs[name] = m.bf || ''; }
+  }
+  closeSheet(); render(); toast('已改好「' + name + '」的餐點');
+  STATE.mealPending = (STATE.mealPending || 0) + 1;
+  STATE.mealQ = (STATE.mealQ || Promise.resolve()).then(function () {
+    return call('setMeal', STATE.adminKey, id, name, m.lunch || '', m.bf || '', 1);
+  }).then(function () { STATE.mealPending--; }, function (err) {
+    STATE.mealPending--; toast('「' + name + '」的餐點沒存成功：' + err.message); load();
+  });
 }
 function mealTag(e) {   // 卡片上的小標籤
   var k = [e.breakfast ? '早餐' : '', e.lunch ? '便當' : ''].filter(Boolean);
@@ -2546,26 +2568,45 @@ function rmVol(si, ri, vi) {
   STATE.plan.sections[si].rows[ri].vols.splice(vi, 1); planDirty(); renderPlan(); window.scrollTo(0, y);
 }
 
-/* 幫某一列選志工：沒安排的排前面 */
+/* 幫某一列選志工：沒安排的排前面。
+   打開時就固定順序，勾選時名字不會跳走；按「好了」、下次再打開才重新排 */
 function openVolPick(si, ri) {
-  STATE.vp = { s: si, r: ri };
+  var e = findEvent(STATE.planEvent), cnt = volCount(STATE.plan), row = STATE.plan.sections[si].rows[ri];
+  var mine = function (n) { return row.vols.indexOf(n) >= 0; };
+  var rank = function (n) { return mine(n) ? 0 : (cnt[n] ? 2 : 1); };   // 已在這列 → 還沒安排 → 已排別項
+  var order = e.names.slice().sort(function (a, b) { return rank(a) - rank(b); });
+  STATE.vp = { s: si, r: ri, order: order, grp: {} };
+  order.forEach(function (n) { STATE.vp.grp[n] = rank(n) === 2 ? 'done' : 'todo'; });
   drawVolPick();
 }
-function drawVolPick() {
-  var e = findEvent(STATE.planEvent), row = STATE.plan.sections[STATE.vp.s].rows[STATE.vp.r], cnt = volCount(STATE.plan);
-  var list = e.names.slice().sort(function (a, b) { return (cnt[a] ? 1 : 0) - (cnt[b] ? 1 : 0); });
-  openSheet('<h2>選志工</h2><p class="ctx">' + esc(txtOf(row.item) || '這一列') + (row.content ? '：' + esc(txtOf(row.content).split('\n')[0]) : '') + '</p>' +
-    (list.length ? '<div class="vpick">' + list.map(function (n) {
-      var on = row.vols.indexOf(n) >= 0, c = cnt[n] || 0;
-      return '<button class="' + (on ? 'on' : '') + '" onclick="toggleVol(' + jsArg(n) + ')"><b>' + (on ? '☑ ' : '☐ ') + esc(n) + '</b><small>' +
-        (c ? (on ? (c > 1 ? '另外還有 ' + (c - 1) + ' 項' : '在這一項') : '已排 ' + c + ' 項') : '還沒安排') + '</small></button>';
-    }).join('') + '</div>' : '<p class="empty">這場還沒有志工報名</p>') +
-    '<button class="btn btn-go" onclick="closeVolPick()">好了</button>');
+function volBtnHTML(n) {
+  var row = STATE.plan.sections[STATE.vp.s].rows[STATE.vp.r], cnt = volCount(STATE.plan);
+  var on = row.vols.indexOf(n) >= 0, c = cnt[n] || 0, other = c - (on ? 1 : 0);
+  var cls = on ? 'on' : (c ? 'done' : 'todo');
+  var tag = on ? (other ? '排在這裡，另外還有 ' + other + ' 項' : '排在這裡') : (c ? '已排 ' + c + ' 項' : '還沒安排');
+  return '<button type="button" class="' + cls + '" data-n="' + esc(n) + '" onclick="toggleVol(this)"><b>' + (on ? '☑ ' : '☐ ') + esc(n) + '</b><small>' + tag + '</small></button>';
 }
-function toggleVol(n) {
-  var row = STATE.plan.sections[STATE.vp.s].rows[STATE.vp.r], i = row.vols.indexOf(n);
+function drawVolPick() {
+  var e = findEvent(STATE.planEvent), row = STATE.plan.sections[STATE.vp.s].rows[STATE.vp.r], vp = STATE.vp;
+  var todo = vp.order.filter(function (n) { return vp.grp[n] === 'todo'; }), done = vp.order.filter(function (n) { return vp.grp[n] === 'done'; });
+  var grp = function (t, list, cls) { return list.length ? '<div class="vpg ' + cls + '">' + t + '（' + list.length + ' 位）</div><div class="vpick">' + list.map(volBtnHTML).join('') + '</div>' : ''; };
+  openSheet('<h2>選志工</h2><p class="ctx">' + esc(txtOf(row.item) || '這一列') + (row.content ? '：' + esc(txtOf(row.content).split('\n')[0]) : '') + '</p>' +
+    '<p class="vp-sum" id="vpsum"></p>' +
+    (vp.order.length ? grp('還沒安排工作', todo, 'g-todo') + grp('已經排了別的工作', done, 'g-done') : '<p class="empty">這場還沒有志工報名</p>') +
+    '<button class="btn btn-go" onclick="closeVolPick()">好了</button>');
+  vpSum();
+}
+function vpSum() {
+  var e = findEvent(STATE.planEvent), cnt = volCount(STATE.plan), el = document.getElementById('vpsum'); if (!el) return;
+  var left = e.names.filter(function (n) { return !cnt[n]; }).length;
+  el.innerHTML = left ? '整場還有 <b>' + left + '</b> 位沒安排' : '<span class="vp-ok">整場志工都安排好了</span>';
+}
+function toggleVol(btn) {
+  var n = btn.getAttribute('data-n'), row = STATE.plan.sections[STATE.vp.s].rows[STATE.vp.r], i = row.vols.indexOf(n);
   if (i >= 0) row.vols.splice(i, 1); else row.vols.push(n);
-  planDirty(); drawVolPick();
+  planDirty();
+  var tmp = document.createElement('div'); tmp.innerHTML = volBtnHTML(n); btn.parentNode.replaceChild(tmp.firstChild, btn);   // 只換這一顆，位置不動
+  vpSum();
 }
 function closeVolPick() { var y = window.pageYOffset; closeSheet(); renderPlan(); window.scrollTo(0, y); }
 
